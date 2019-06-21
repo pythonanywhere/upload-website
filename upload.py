@@ -35,7 +35,7 @@ def main():
     else:
         site_hostname = f"{username}.pythonanywhere.com"
 
-    project_home = f"/home/{username}/mysite/"
+    project_home = f"/home/{username}/mysite"
 
     webapps_url = urljoin(base_api_url, "webapps/")
     print(f"Checking if website already exists with GET from {webapps_url}")
@@ -104,18 +104,30 @@ def main():
 
     our_webapp_url = urljoin(webapps_url, f"{site_hostname}/")
     static_file_route_url = urljoin(our_webapp_url, "static_files/")
-    print(f"Configuring static file route with post to {static_file_route_url}")
-    resp = requests.post(
+    print(f"Getting existing static file routes with get to {static_file_route_url}")
+    resp = requests.get(
         static_file_route_url,
-        data={
-            "url": "/static",
-            "path": f"{project_home}/static",
-        },
         headers={"Authorization": f"Token {api_token}"}
     )
-    if resp.status_code not in (200, 201):
-        print(f"Error creating static file route: status was {resp.status_code}\n{resp.content}")
+    if resp.status_code != 200:
+        print(f"Error getting static file route list: status was {resp.status_code}\n{resp.content}")
         sys.exit(-1)
+
+    static_route_urls = [route["url"] for route in resp.json()]
+    print(f"Found these route URLs: {static_route_urls}")
+    if "/static" not in static_route_urls:
+        print(f"Configuring static file route with post to {static_file_route_url}")
+        resp = requests.post(
+            static_file_route_url,
+            data={
+                "url": "/static",
+                "path": f"{project_home}/static",
+            },
+            headers={"Authorization": f"Token {api_token}"}
+        )
+        if resp.status_code not in (200, 201):
+            print(f"Error creating static file route: status was {resp.status_code}\n{resp.content}")
+            sys.exit(-1)
 
     reload_website_url = urljoin(our_webapp_url, "reload/")
     print(f"Reloading website with post to {reload_website_url}")
